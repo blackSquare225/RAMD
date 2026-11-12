@@ -1,0 +1,10 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - r-base=4.3  # Specify the R version
+  - r-data.table  # For reading and manipulating data
+  - r-xlsx  # For writing to Excel files
+  - openjdk=11  # Required for the r-xlsx library (Java dependency)
+  - r-openxlsx

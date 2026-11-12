@@ -1,0 +1,23 @@
+# Snakemake internals
+.snakemake/
+
+# data and results
+alignments/
+backup/
+benchmarks/
+config
+data/
+github_passkey.txt
+LOD/
+logs/
+plot/
+qc/
+read_length/
+repos/
+resources/
+results/
+run.sh
+
+# environments / OS clutter
+.bpipe/
+.RData

@@ -1,0 +1,16 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - r-base=4.3
+  - r-ichorcna
+  - r-essentials
+  - r-devtools
+  - r-plyr
+  - r-BiocManager
+  - r-remotes
+  - r-optparse
+  - bioconductor-hmmcopy
+  - bioconductor-genomeinfodb
+  - bioconductor-genomicranges

@@ -1,0 +1,64 @@
+#file:"/.yaml"
+# including targeted rules
+include: "rules/getdata.smk"
+include: "rules/prepare_data.smk"
+include: "rules/fusion.smk"
+include: "rules/align_roi.smk"
+include: "rules/qc_roi.smk"
+include: "rules/call_roi.smk"
+include: "rules/annot_roi.smk"
+include: "rules/process_roi_variants.smk"
+
+# including wgs rules
+include: "rules/qc_wgs.smk"
+include: "rules/align_wgs.smk"
+include: "rules/cnv_call_wgs.smk"
+include: "rules/sv_call_wgs.smk"
+
+sample=config["project_name"]
+
+
+rule install:
+	input:
+		f"resources/vep/cache",
+		f"resources/vep/plugins",		
+		f"resources/gencode.v49.annotation.bed",
+		#f'resources/header.varscan.tsv', # TEST RUN -> create also all the necessary files to run the analysis 
+		#f"results/testSample/testSample.varscan.vep.scored.tsv"
+
+rule targeted:
+	input:
+		#f"data/{sample}/targeted/fusion/500kbp/{sample}.fusion.500kbp.fastq.gz",
+		#f"data/{sample}/targeted/fusion/1Mbp/{sample}.fusion.1Mbp.fastq.gz",
+		#f"results/{sample}/targeted/fusion/500kbp/jaffa_results.csv",
+		#f"results/{sample}/targeted/fusion/1Mbp/jaffa_results.csv",
+		f"data/{sample}/targeted/roi/{sample}.targeted.fastq.gz",	
+		f"alignments/{sample}/targeted/roi/{sample}.minimap2.targeted.srt.bam",
+		f"alignments/{sample}/targeted/roi/{sample}.ngmlr.targeted.srt.bam",
+		f"alignments/{sample}/targeted/roi/{sample}.minimap2.targeted.srt.bam.bai",
+		f"qc/{sample}/targeted/roi/{sample}_cov_stats.csv",
+		f"results/{sample}/targeted/{sample}.report.targeted.xlsx"
+
+rule wgs: 
+	input:
+		f"alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam.bai",
+		f"qc/{sample}/wgs/{sample}.minimap2_wgs_1000bp.regions.bed.gz",
+		f"qc/{sample}/wgs/{sample}.multiqc.html",
+		expand(f"results/{sample}/wgs/{sample}.QDNAseq.{{window}}.bed", window=["30kbp", "50kbp", "100kbp", "500kbp", "1000kbp"]),
+		expand(f"results/{sample}/wgs/{sample}.QDNAseq.{{window}}.filt.bed", window=["50kbp", "100kbp"]),
+		expand(f"results/{sample}/wgs/{sample}.QDNAseq.{{window}}.annotSV.tsv", window=["50kbp", "100kbp"]),
+		#f"results/{sample}/wgs/{sample}.50kbp.wig", # ichorCNA
+		#f"results/{sample}/wgs/{sample}/{sample}_tpdf.pdf", # ichorCNA
+		#f"results/{sample}/wgs/{sample}.ichorCNA.50kbp.filt.bed",
+		#f"results/{sample}/wgs/{sample}.ichorCNA.50kbp.annotSV.tsv",
+		#f"results/{sample}/wgs/{sample}.report.cnv.xlsx",
+		#f"results/{sample}/wgs/{sample}.sniffles2.vcf.gz",
+		#f"results/{sample}/wgs/{sample}.sniffles2.snf",
+		#expand(f"results/{sample}/wgs/{sample}.sniffles2.{{svtype}}.svafotate.vcf", svtype=["BND", "INV"]),
+		#f"results/{sample}/wgs/{sample}.sniffles2.INV.annotSV.tsv",
+		#f"results/{sample}/wgs/{sample}.sniffles2.BND.annotSV.tsv",
+		#f"results/{sample}/wgs/{sample}.report.sv.xlsx"
+		#f"resources/metadata_removeNs.mdr"
+		#f"results/{sample}/wgs/{sample}.sniffles2.tsv",
+		#f"results/{sample}/wgs/{sample}.chr3rearrangments.annot.tsv"
+

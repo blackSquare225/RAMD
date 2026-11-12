@@ -1,0 +1,7 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - r-base=4.3  # Adjust version to match your script's R version requirements
+  - r-tidyverse

@@ -1,0 +1,8 @@
+channels:
+ - conda-forge
+ - r
+ - bioconda
+dependencies:
+ - r-base
+ - r-xlsx
+ - r-data.table

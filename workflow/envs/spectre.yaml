@@ -1,0 +1,6 @@
+channels:
+  - conda-forge
+  - nanoporetech
+  - defaults
+dependencies:
+  - ont-spectre=0.3.3 

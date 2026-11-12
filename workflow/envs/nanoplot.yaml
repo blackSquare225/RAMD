@@ -1,0 +1,8 @@
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.12
+  - nanoplot=1.46.1
+  - plotly<6
+  - python-kaleido=0.2.1

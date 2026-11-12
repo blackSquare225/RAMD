@@ -1,0 +1,6 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults 
+dependencies:
+  - svim=2.0.0

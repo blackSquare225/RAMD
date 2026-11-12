@@ -1,0 +1,6 @@
+channels:
+ - conda-forge
+ - bioconda
+ - defaults
+dependencies:
+ - hmmcopy=0.1.1
