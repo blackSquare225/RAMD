@@ -16,7 +16,6 @@ read_length/
 repos/
 resources/
 results/
-run.sh
 
 # environments / OS clutter
 .bpipe/
