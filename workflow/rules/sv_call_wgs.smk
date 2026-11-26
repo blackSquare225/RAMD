@@ -1,222 +1,213 @@
-rule sniffles2_wgs:
+rule severus_to:
 	input:
 		bam="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam",
 		bai="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam.bai",
-		ref="resources/GRCh38_full_analysis_set_plus_decoy_hla.fa"
+		vntr="resources/human_GRCh38_no_alt_analysis_set.trf.bed",
+		pon="resources/PoN/PoN_1000G_hg38.tsv.gz"
 	output:
-		vcf="results/{sample}/wgs/{sample}.sniffles2.vcf.gz",
-		snf="results/{sample}/wgs/{sample}.sniffles2.snf"
+		"results/{sample}/wgs/{sample}/severus_out/somatic_SVs/severus_somatic.vcf"
 	params:
-		"results/{sample}/wgs/{sample}.sniffles2.vcf"
-	threads: 
-		lambda wildcards: int(config["threads"])
-	log:
-		"logs/{sample}/{sample}.sniffles2_wgs.log"
-	benchmark:
-		"benchmarks/{sample}/{sample}.sniffles2_wgs.tsv"
-	conda:
-		"../envs/sniffles2.7.yaml"
-	shell:
-		"""
-		sniffles \
-			--input {input.bam} \
-			--vcf {params} \
-			--snf {output.snf} \
-			--output-rnames \
-			--reference {input.ref} \
-			--minsupport 1 \
-			--minsvlen 50 \
-			--allow-overwrite \
-			--qc-bnd-filter-strand False \
-			--mapq 20 \
-			--threads {threads} 2>{log} && \
-		bgzip {params}  
-		""" 
-
-rule sniffles2_parse_svtype:
-	input:
-		vcf="results/{sample}/wgs/{sample}.sniffles2.vcf.gz",
-		excl="resources/GRCh38_full_analysis_set_plus_decoy_hla.exclude.txt",
-	output:
-		vcf_nd="results/{sample}/wgs/{sample}.sniffles2.nd.vcf",
-		vcf_bnd="results/{sample}/wgs/{sample}.sniffles2.BND.vcf",
-		vcf_inv="results/{sample}/wgs/{sample}.sniffles2.INV.vcf"
-	threads:
-		1
-	log:
-		"logs/{sample}/{sample}.sniffles2_parse_svtype.log"
-	benchmark:
-		"benchmarks/{sample}/{sample}.sniffles2_parse_svtype.tsv"
-	conda:
-		"../envs/bcftools.yaml"
-	shell:
-		"""
-		zgrep -v -F -f {input.excl} {input.vcf} > {output.vcf_nd} 2> {log} && \
-		bcftools view -i'INFO/SVTYPE == "BND"' -Ov -o {output.vcf_bnd} {output.vcf_nd} 2>> {log} && \
-		bcftools view -i'INFO/SVTYPE == "INV" && INFO/SVLEN > 500000' -Ov -o {output.vcf_inv} {output.vcf_nd} 2>> {log}
-		"""
-
-rule sniffles2_svafotate:
-	input:
-		vcf="results/{sample}/wgs/{sample}.sniffles2.{svtype}.vcf",
-		bed="resources/SVAFotate_core_SV_popAFs.GRCh38.v4.1.bed.gz",
-	output:
-		vcf="results/{sample}/wgs/{sample}.sniffles2.{svtype}.svafotate.vcf",
+		"results/wgs/{sample}/severus_out/"
 	threads:
 		config["threads"]
 	conda:
-		"../envs/svafotate.yaml"
+		"../envs/severus.yaml"
 	log:
-		"logs/{sample}/{sample}.sniffles2_svafotate.{svtype}.log"
+		"logs/{sample}/severus_out.log"
 	shell:
 		"""
-		svafotate annotate --minf 0.8 --ann best pops -c 0 -l 1000000 --cpu {threads} --bed {input.bed} --vcf {input.vcf} --out {output} 2> {log}
+		severus \
+			--target-bam {input.bam} \
+			--out-dir {params} \
+			--target-sample {wildcards.sample} \
+			--threads {threads} \
+			--vntr-bed {input.vntr} \
+			--PON {input.pon} \
+			--min-support 3 \
+			--min-sv-size 500 \
+			2> {log}
 		"""
 
-rule sniffles2_remove_pop_vars:
+rule severus_parse_svtype:
 	input:
-		"results/{sample}/wgs/{sample}.sniffles2.{svtype}.svafotate.vcf"
+		vcf="results/{sample}/wgs/{sample}/severus_out/somatic_SVs/severus_somatic.vcf",
+		excl="resources/GRCh38_full_analysis_set_plus_decoy_hla.exclude.txt",
 	output:
-		"results/{sample}/wgs/{sample}.sniffles2.{svtype}.filtPopVars.vcf"
+		vcf_nd="results/{sample}/wgs/{sample}.severus.nd.vcf",
+		vcf_bnd="results/{sample}/wgs/{sample}/{sample}.severus.BND.vcf",
+		vcf_inv="results/{sample}/wgs/{sample}/{sample}.severus.INV.vcf",
+		vcf_dup="results/{sample}/wgs/{sample}/{sample}.severus.DUP.vcf"
+	threads:
+		1
+	log:
+		"logs/{sample}/{sample}.severus_parse_svtype.log"
+	benchmark:
+		"benchmarks/{sample}/{sample}.severus_parse_svtype.tsv"
+	conda:
+		"../envs/bcftools.yaml"
+	shell:
+		"""
+		grep -v -F -f {input.excl} {input.vcf} > {output.vcf_nd} 2> {log} && \
+		bcftools view -i 'QUAL >= 5' {output.vcf_nd} | bcftools view -i'INFO/SVTYPE == "BND"' -Ov -o {output.vcf_bnd} - 2>> {log} && \
+		bcftools view -i 'QUAL >= 5' {output.vcf_nd} | bcftools view -i'INFO/SVTYPE == "INV"' -Ov -o {output.vcf_inv} - 2>> {log} && \
+		bcftools view -i 'QUAL >= 5' {output.vcf_nd} | bcftools view -i'INFO/SVTYPE == "DUP"' -Ov -o {output.vcf_dup} - 2>> {log}
+		"""
+
+rule severus_query_info_field:
+	input:
+		vcf_bnd="results/{sample}/wgs/{sample}.severus.BND.vcf",
+		vcf_inv="results/{sample}/wgs/{sample}.severus.INV.vcf",
+		vcf_dup="results/{sample}/wgs/{sample}.severus.DUP.vcf"
+	output:
+		tsv_bnd="results/{sample}/wgs/{sample}.severus.BND.INFO.tsv",
+		tsv_inv="results/{sample}/wgs/{sample}.severus.INV.INFO.tsv",
+		tsv_dup="results/{sample}/wgs/{sample}.severus.DUP.INFO.tsv"
 	threads:
 		1
 	conda:
 		"../envs/bcftools.yaml"
 	log:
-		"logs/{sample}/{sample}.sniffles2_remove_pop_vars.{svtype}.log"
-	shell:
-		"bcftools view -i'Max_AF <= 0.01' -Ov -o {output} {input} 2> {log}"
-
-rule sniffles2_query_info_field:
-	input:
-		vcf_bnd="results/{sample}/wgs/{sample}.sniffles2.BND.filtPopVars.vcf",
-		vcf_inv="results/{sample}/wgs/{sample}.sniffles2.INV.filtPopVars.vcf"
-	output:
-		tsv_bnd="results/{sample}/wgs/{sample}.sniffles2.BND.filtPopVars.INFO.tsv",
-		tsv_inv="results/{sample}/wgs/{sample}.sniffles2.INV.filtPopVars.INFO.tsv"
-	threads:
-		1
-	conda:
-		"../envs/bcftools.yaml"
-	log:
-		"logs/{sample}/{sample}.sniffles2_query_info_field.log"
+		"logs/{sample}/{sample}.severus_query_info_field.log"
 	shell:
 		"""
-		cat <(echo -e "name\tQUAL\tPRECISE\tSVTYPE\tRNAMES\tCOVERAGE\tSTRAND\tSTDEV_POS\tVAF\tDR\tDV\tGT") \
-		<(bcftools query -f'%ID\t%QUAL\t%PRECISE\t%SVTYPE\t%RNAMES\t%COVERAGE\t%STRAND\t%STDEV_POS\t%VAF\t[%DR\t%DV\t%GT]' {input.vcf_bnd}) > {output.tsv_bnd} 2> {log} && \
-		cat <(echo -e "name\tQUAL\tPRECISE\tSVLEN\tSVTYPE\tRNAMES\tCOVERAGE\tSTDEV_LEN\tSTDEV_POS\tVAF\tDR\tDV\tGT") \
-		<(bcftools query -f'%ID\t%QUAL\t%PRECISE\t%SVLEN\t%SVTYPE\t%RNAMES\t%COVERAGE\t%STDEV_LEN\t%STDEV_POS\t%VAF\t[%DR\t%DV\t%GT]' {input.vcf_inv}) > {output.tsv_inv} 2>> {log}
+		cat <(echo -e "name\tQUAL\tSVTYPE\tSTRANDS\tDR\tDV\tGT") \
+			<(bcftools query -f'%ID\t%QUAL\t%SVTYPE\t%STRANDS\t[%DR\t%DV\t%GT]\n' {input.vcf_bnd}) > {output.tsv_bnd} 2> {log} && \
+		cat <(echo -e "name\tQUAL\tSVTYPE\tSTRANDS\tDR\tDV\tGT") \
+			<(bcftools query -f'%ID\t%QUAL\t%SVTYPE\t%STRANDS\t[%DR\t%DV\t%GT]\n' {input.vcf_inv}) > {output.tsv_inv} 2>> {log} && \
+		cat <(echo -e "name\tQUAL\tSVTYPE\tSTRANDS\tDR\tDV\tGT") \
+			<(bcftools query -f'%ID\t%QUAL\t%SVTYPE\t%STRANDS\t[%DR\t%DV\t%GT]\n' {input.vcf_dup}) > {output.tsv_dup} 2>> {log}
 		"""
 
-rule sniffles2_vcf_to_bedpe:
+rule severus_vcf_to_bedpe:
 	input:
-		"results/{sample}/wgs/{sample}.sniffles2.{svtype}.filtPopVars.vcf"
+		"results/{sample}/wgs/{sample}.severus.{SVTYPE}.vcf"
 	output:
-		"results/{sample}/wgs/{sample}.sniffles2.{svtype}.filtPopVars.bedpe"
+		"results/{sample}/wgs/{sample}.severus.{SVTYPE}.bedpe"
 	threads:
 		1
 	conda:
 		"../envs/svtools.yaml"
 	log:
-		"logs/{sample}/{sample}.sniffles2_vcf_to_bedpe.{svtype}.log"
+		"logs/{sample}/{sample}.severus_vcf_to_bedpe.{SVTYPE}.log"
 	shell:
 		"svtools vcftobedpe --input {input} --output {output} 2> {log}"
 
-
-rule sniffles2_bedpe_to_brk_bnd:
+rule severus_bedpe_to_brk_bnd:
 	input:
-		bedpe_bnd="results/{sample}/wgs/{sample}.sniffles2.BND.filtPopVars.bedpe",
+		"results/{sample}/wgs/{sample}.severus.{SVTYPE}.bedpe",
 	output:
-		brk1_bnd="results/{sample}/wgs/{sample}.sniffles2.BND.filtPopVars.brk1.bed",
-		brk2_bnd="results/{sample}/wgs/{sample}.sniffles2.BND.filtPopVars.brk2.bed"
+		brk1="results/{sample}/wgs/{sample}.severus.{SVTYPE}.brk1.bed",
+		brk2="results/{sample}/wgs/{sample}.severus.{SVTYPE}.brk2.bed"
 	threads:
 		1
 	log:
-		"logs/{sample}/{sample}.sniffles2_bedpe_to_brk_bnd.log"
+		"logs/{sample}/{sample}.severus_bedpe_to_brk_bnd.{SVTYPE}.log"
 	shell:
 		r"""
-		if [ ! -s {input.bedpe_bnd} ]; then
+		if [ ! -s {input} ]; then
 			echo "Input is empty or missing → touching output"
-			touch {output.brk1_bnd} {output.brk2_bnd}
+			touch {output.brk1} {output.brk2}
 		else
 			echo "Input is not empty → processing..."
-			grep -v '^#' {input.bedpe_bnd} | awk 'BEGIN{{OFS="\t"}} {{print $1, $2, $2+2, $7}}' > {output.brk1_bnd} 2> {log} && \
-			grep -v '^#' {input.bedpe_bnd} | awk 'BEGIN{{OFS="\t"}} {{print $4, $5, $5+2, $7}}' > {output.brk2_bnd} 2>> {log}        
+			grep -v '^#' {input} | awk 'BEGIN{{OFS="\t"}} {{print $1, $2, $2+2, $7}}' > {output.brk1} 2> {log} && \
+			grep -v '^#' {input} | awk 'BEGIN{{OFS="\t"}} {{print $4, $5, $5+2, $7}}' > {output.brk2} 2>> {log}        
 		fi
 		"""
 
-rule sniffles2_bedpe_to_brk_inv:
-	input:
-		bedpe_inv="results/{sample}/wgs/{sample}.sniffles2.INV.filtPopVars.bedpe"
-	output:
-		brk1_inv="results/{sample}/wgs/{sample}.sniffles2.INV.filtPopVars.brk1.bed",
-		brk2_inv="results/{sample}/wgs/{sample}.sniffles2.INV.filtPopVars.brk2.bed"
-	threads:
-		1
-	log:
-		"logs/{sample}/{sample}.sniffles2_bedpe_to_brk_inv.log"
-	shell:
-		r"""
-		if [ ! -s {input.bedpe_inv} ]; then
-			echo "Input is empty or missing → touching output"
-			touch {output.brk1_inv} {output.brk2_inv}
-		else
-			echo "Input is not empty → processing..."
-			grep -v '^#' {input.bedpe_inv} | awk 'BEGIN{{OFS="\t"}} {{print $1, $2, $2+2, $7}}' > {output.brk1_inv} 2> {log} && \
-			grep -v '^#' {input.bedpe_inv} | awk 'BEGIN{{OFS="\t"}} {{print $4, $5, $5+2, $7}}' > {output.brk2_inv} 2>> {log}
-		fi
-		"""
-
-rule sniffles2_annotate_brk:
+rule severus_annotate_brk:
 	input:
 		"workflow/scripts/annotate_brk.R",
-		"resources/gencode.v49.annotation.bed",
-		"results/{sample}/wgs/{sample}.sniffles2.{svtype}.filtPopVars.{brk}.bed"
+		"results/svcallers_comparison/{sample}/{sample}.severus.{SVTYPE}.{brk}.bed",
+		"resources/gencode_v49.bed",
 	output:
-		"results/{sample}/wgs/{sample}.sniffles2.{svtype}.filtPopVars.{brk}.annot.bed"
+		"results/{sample}/wgs/{sample}.severus.{SVTYPE}.{brk}.annot.bed"
 	threads:
 		1
 	conda:
 		"../envs/annotate_brk.yaml"
 	log:
-		"logs/{sample}/{sample}.sniffles2_annotate_{svtype}.{brk}.log"
+		"logs/{sample}/{sample}.cutesv_annotate_brk.{SVTYPE}.{brk}.log"
 	shell:
 		"Rscript {input} {output} 2> {log}"
 
-rule sniffles2_merge_annot_brk: 
+
+rule severus_merge_annot_brk: 
 	input:
 		"workflow/scripts/merge_annot_brk.R",
-		"results/{sample}/wgs/{sample}.sniffles2.{svtype}.filtPopVars.brk1.annot.bed",
-		"results/{sample}/wgs/{sample}.sniffles2.{svtype}.filtPopVars.brk2.annot.bed",
-		"results/{sample}/wgs/{sample}.sniffles2.{svtype}.filtPopVars.INFO.tsv"
+		"results/{sample}/wgs/{sample}.severus.{SVTYPE}.brk1.annot.bed",
+		"results/{sample}/wgs/{sample}.severus.{SVTYPE}.brk2.annot.bed",
+		"results/{sample}/wgs/{sample}.severus.{SVTYPE}.INFO.tsv"
 	output:
-		"results/{sample}/wgs/{sample}.sniffles2.{svtype}.filtPopVars.merged.annot.tsv"
+		"results/{sample}/wgs/{sample}.severus.{SVTYPE}.merged.annot.tsv"
 	threads:
 		1
 	conda:
 		"../envs/merge_annot_brk.yaml"
 	log:
-		"logs/{sample}/{sample}.sniffles2_merge_annot_brk.{svtype}.log"
+		"logs/{sample}/{sample}.severus_merge_annot_brk.{SVTYPE}.log"
 	shell:
 		"Rscript {input} {output} 2> {log}"
 
-rule chr3_rearrangment:
+rule severus_flag_bnd_known:
 	input:
-		script="workflow/scripts/gata2_mecom.py",
-		bam="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam",
-		bed="resources/hg38.ncbiRefSeq.sorted.bed"
+		"workflow/scripts/SV_known_flag.R",
+		"results/{sample}/wgs/{sample}.severus.BND.merged.annot.tsv",
+		config["BND_TARGET"],
+		config["ATLAS_TARGET"],
+		config["GENEXUS_FUSION"],
+		config["BND_FALSE_POSITIVES"]
 	output:
-		"results/{sample}/wgs/{sample}.chr3rearrangments.annot.tsv"
-	threads: 
-		1 
-	conda:
-		"../envs/gata2_mecom.yaml"
+		"results/{sample}/wgs/{sample}.severus.BND.merged.annot.flagged.tsv"
+	conda: 
+		"../envs/fusion_analysis.yaml"
 	log:
-		"logs/{sample}/{sample}.chr3_rearrangment.log"
-	benchmark:
-		"benchmarks/{sample}/{sample}.chr3_rearrangment.tsv"
+		"logs/{sample}/severus_flag_bnd_known.log"
 	shell:
-		"python {input.script} -b {input.bam} -a {input.bed} -r chr3:169000000-169088157 -o {output}"
+		"Rscript {input} {output} 2>{log}"
+
+rule severus_flag_inv_known:
+	input:
+		"workflow/scripts/INV_DUP_known_flag.R",
+		"results/{sample}/wgs/{sample}.severus.INV.merged.annot.tsv",
+		"resources/genexus_INV_DUP.bed",
+	output:
+		"results/{sample}/wgs/{sample}.severus.INV.merged.annot.flagged.tsv"
+	conda: 
+		"../envs/fusion_analysis.yaml"
+	log:
+		"logs/{sample}/severus_flag_inv_known.log"
+	shell:
+		"Rscript {input} {output} 2>{log}"
+
+rule severus_flag_dup_known:
+	input:
+		"workflow/scripts/INV_DUP_known_flag.R",
+		"results/{sample}/wgs/{sample}.severus.DUP.merged.annot.tsv",
+		"resources/genexus_INV_DUP.bed",
+	output:
+		"results/{sample}/wgs/{sample}.severus.DUP.merged.annot.flagged.tsv"
+	conda: 
+		"../envs/fusion_analysis.yaml"
+	log:
+		"logs/{sample}/severus_flag_dup_known.log"
+	shell:
+		"Rscript {input} {output} 2>{log}"
+
+rule severus_create_final_report_sv:
+	input:
+		"workflow/scripts/create_final_report_sv.R",
+		"results/{sample}/wgs/{sample}.severus.INV.merged.annot.flagged.tsv",
+		"results/{sample}/wgs/{sample}.severus.BND.merged.annot.flagged.tsv",
+		"results/{sample}/wgs/{sample}.severus.DUP.merged.annot.flagged.tsv",
+	output:
+		"results/svcallers_comparison/{sample}/{sample}.severus.SV_final_report.xlsx"
+	conda:
+		"../envs/fusion_analysis.yaml"
+	log:
+		"logs/{sample}/severus_create_final_report_sv.log"
+	shell:
+		"Rscript {input} {output} 2> {log}"
+
 
 rule create_final_report_sv:
 	input:

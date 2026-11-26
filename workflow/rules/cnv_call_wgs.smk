@@ -1,152 +1,3 @@
-rule QDNAseq_30kbp:
-	input:
-		Rscript="workflow/scripts/QDNAseq.R",
-		bam="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam",
-		bai="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam.bai"
-	output:
-		bed="results/{sample}/wgs/{sample}.QDNAseq.30kbp.bed",
-		seg="results/{sample}/wgs/{sample}.QDNAseq.30kbp.seg"
-	params:
-		"results/{sample}/wgs/"
-	threads: 
-		1
-	log:
-		"logs/{sample}/{sample}.QDNAseq_30kbp.log"
-	benchmark:
-		"benchmarks/{sample}/{sample}.QDNAseq_30kbp.tsv"
-	#conda:
-	#	"../envs/QDNAseq.yaml"
-	shell:
-		"Rscript {input.Rscript} 30 {input.bam} {params}"
-
-rule QDNAseq_50kbp:
-	input:
-		Rscript="workflow/scripts/QDNAseq.R",
-		bam="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam",
-		bai="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam.bai"
-	output:
-		bed="results/{sample}/wgs/{sample}.QDNAseq.50kbp.bed",
-		seg="results/{sample}/wgs/{sample}.QDNAseq.50kbp.seg"
-	params:
-		"results/{sample}/wgs/"
-	threads: 1
-	log:
-		"logs/{sample}/{sample}.minimap2.QDNAseq_50kbp.log"
-	benchmark:
-		"benchmarks/{sample}/{sample}.minimap2.QDNAseq_50kbp.tsv"
-	#conda:
-	#	"../envs/QDNAseq.yaml"
-	shell:
-		"Rscript {input.Rscript} 50 {input.bam} {params}"
-
-
-rule QDNAseq_100kbp:
-	input:
-		Rscript="workflow/scripts/QDNAseq.R",
-		bam="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam",
-		bai="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam.bai"
-	output:
-		bed="results/{sample}/wgs/{sample}.QDNAseq.100kbp.bed",
-		seg="results/{sample}/wgs/{sample}.QDNAseq.100kbp.seg"
-	params:
-		"results/{sample}/wgs/"
-	threads: 1
-	log:
-		"logs/{sample}/{sample}.minimap2.QDNAseq_100kbp.log"
-	benchmark:
-		"benchmarks/{sample}/{sample}.minimap2.QDNAseq_100kbp.tsv"
-	#conda:
-	#	"../envs/QDNAseq.yaml"
-	shell:
-		"Rscript {input.Rscript} 100 {input.bam} {params}"
-
-rule QDNAseq_500kbp:
-	input:
-		Rscript="workflow/scripts/QDNAseq.R",
-		bam="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam",
-		bai="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam.bai"
-	output:
-		bed="results/{sample}/wgs/{sample}.QDNAseq.500kbp.bed",
-		seg="results/{sample}/wgs/{sample}.QDNAseq.500kbp.seg"
-	params:
-		"results/{sample}/wgs/"
-	threads: 1
-	log:
-		"logs/{sample}/{sample}.minimap2.QDNAseq_500kbp.log"
-	benchmark:
-		"benchmarks/{sample}/{sample}.minimap2.QDNAseq_500kbp.tsv"
-	#conda:
-	#	"../envs/QDNAseq.yaml"
-	shell:
-		"Rscript {input.Rscript} 500 {input.bam} {params}"
-
-rule QDNAseq_1000kbp:
-	input:
-		Rscript="workflow/scripts/QDNAseq.R",
-		bam="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam",
-		bai="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam.bai"
-	output:
-		bed="results/{sample}/wgs/{sample}.QDNAseq.1000kbp.bed",
-		seg="results/{sample}/wgs/{sample}.QDNAseq.1000kbp.seg"
-	params:
-		"results/{sample}/wgs/"
-	threads: 1
-	log:
-		"logs/{sample}/{sample}.minimap2.QDNAseq_1000kbp.log"
-	benchmark:
-		"benchmarks/{sample}/{sample}.minimap2.QDNAseq_1000kbp.tsv"
-	#conda:
-	#	"../envs/QDNAseq.yaml"
-	shell:
-		"Rscript {input.Rscript} 1000 {input.bam} {params}"
-
-
-rule parse_QDNAseq:
-	input:
-		Rscript="workflow/scripts/parse_QDNAseq.R",
-		seg="results/{sample}/wgs/{sample}.QDNAseq.{window}.seg",
-	output:
-		"results/{sample}/wgs/{sample}.QDNAseq.{window}.filt.bed"
-	threads:
-		1
-	log:
-		"logs/{sample}/{sample}.parse_QDNAseq.{window}.log"
-	benchmark:
-		"benchmarks/{sample}/{sample}.parse_QDNAseq.{window}.tsv"
-	shell:
-		"""
-		Rscript {input.Rscript} {input.seg} {wildcards.sample} {output} 2> {log}
-		"""
-
-rule annot_QDNAseq:
-	input:
-		AnnotSV="resources/AnnotSV/bin/AnnotSV",
-		bed="results/{sample}/wgs/{sample}.QDNAseq.{window}.filt.bed"
-	output:
-		bed="results/{sample}/wgs/{sample}.QDNAseq.{window}.annotSV.tsv"
-	params:
-		"results/{sample}/wgs/"
-	threads:
-		1
-	log:
-		"logs/{sample}/{sample}.annot_QDNAseq.{window}.log"
-	benchmark:
-		"benchmarks/{sample}/{sample}.annot_QDNAseq.{window}.tsv"
-	shell:
-		"""
-		{input.AnnotSV} \
-			-annotationMode full \
-			-svtBEDcol 4 \
-			-samplesidBEDcol 7 \
-			-SVinputFile {input.bed} \
-			-genomeBuild GRCh38 \
-			-outputFile {output.bed} \
-			-outputDir {params} \
-			-overlap 60 && \
-		sed -i 's/user#1/Bins/;s/user#2/Log2Ratio/;s/user#3/SampleID/' {output.bed}
-		"""
-
-
 rule readCounter_50kbp:
 	input:
 		bam="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam",
@@ -209,6 +60,44 @@ rule ichorCNA_50kbp:
             --outDir {params} 
         """
 
+rule QDNAseq_50kbp:
+	input:
+		Rscript="workflow/scripts/QDNAseq.R",
+		bam="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam",
+		bai="alignments/{sample}/wgs/{sample}.minimap2.wgs.srt.bam.bai"
+	output:
+		bed="results/{sample}/wgs/{sample}.QDNAseq.50kbp.bed",
+		seg="results/{sample}/wgs/{sample}.QDNAseq.50kbp.seg"
+	params:
+		"results/{sample}/wgs/"
+	threads: 1
+	log:
+		"logs/{sample}/{sample}.minimap2.QDNAseq_50kbp.log"
+	benchmark:
+		"benchmarks/{sample}/{sample}.minimap2.QDNAseq_50kbp.tsv"
+	#conda:
+	#	"../envs/QDNAseq.yaml"
+	shell:
+		"Rscript {input.Rscript} 50 {input.bam} {params}"
+
+
+rule parse_QDNAseq:
+	input:
+		Rscript="workflow/scripts/parse_QDNAseq.R",
+		seg="results/{sample}/wgs/{sample}.QDNAseq.50kbp.seg",
+	output:
+		"results/{sample}/wgs/{sample}.QDNAseq.{window}.filt.bed"
+	threads:
+		1
+	log:
+		"logs/{sample}/{sample}.parse_QDNAseq.{window}.log"
+	benchmark:
+		"benchmarks/{sample}/{sample}.parse_QDNAseq.{window}.tsv"
+	shell:
+		"""
+		Rscript {input.Rscript} {input.seg} {wildcards.sample} {output} 2> {log}
+		"""
+
 rule parse_ichorCNA:
 	input:
 		"results/{sample}/wgs/{sample}.seg"
@@ -248,118 +137,6 @@ rule annot_ichorCNA:
 			-overlap 60 && \
 		sed -i 's/user#1/CN/;s/user#2/Bins/;s/user#3/Log2Ratio/;s/user#4/Tool/' {output.bed}
 		"""
-
-
-
-#rule spectre_RemoveNs:
-#	input:
-#		ref="resources/GRCh38_full_analysis_set_plus_decoy_hla.fa"
-#	output:
-#		"resources/metadata_file.mdr",
-#	params:
-#		outdir="resources/",
-#		outfile="metadata_file.mdr"
-#	threads: 
-#		config["threads"]
-#	conda:
-#		"../envs/spectre.yaml"
-#	log:
-#		"logs/spectre_RemoveNs.log"
-#	benchmark:
-#		"benchmarks/spectre_RemoveNs.tsv"
-#	shell:
-#		"""
-#		spectre removeNs \
-#			--reference {input.ref} \
-#			--output-dir {params.outdir} \
-#			--output-file {params.outfile} \
-#			--bin-size 1000 2> {log}
-#		"""
-
-#rule snf2json:
-#	input:
-#		"results/{sample}/{sample}.minimap2.{genome}.sniffles2.snf"
-#	output:
-#		"results/{sample}/{sample}.minimap2.{genome}.sniffles2.snfj.gz"
-#	threads:
-#		config["threads"]
-#	log:
-#		"logs/{sample}/{sample}.minimap2.{genome}.snf2json.log"
-#	benchmark:
-#		"benchmarks/{sample}/{sample}.minimap2.{genome}.snf2json.tsv"
-#	conda:
-#		"../envs/snf2json.yaml"
-#	shell:
-#		"snf2json {input} {output}"
-
-
-rule spectre_CNVCaller:
-	input:
-		cov="qc/{sample}/{sample}.{aligner}.{genome}.regions.bed.gz",
-		ref="resources/GRCh38_full_analysis_set_plus_decoy_hla",
-		meta="resources/metadata_removeNs.mdr",
-		blacklist="resources/grch38_blacklist_spectre.bed",
-		snfj="results/{sample}/{sample}.{aligner}.{genome}.sniffles2.snfj.gz"
-	output:
-		"results/{sample}/{sample}.{aligner}.{genome}_spectre.vcf.gz.tbi"
-	params:
-		outdir="results/{sample}",
-		name="{sample}.{aligner}.{genome}_spectre"
-	threads: 
-		config["threads"]
-	log:
-		"logs/{sample}/{sample}.{aligner}.{genome}.spectre_CNVCaller.log"
-	benchmark:
-		"benchmarks/{sample}/{sample}.{aligner}.{genome}.spectre_CNVCaller.tsv"
-	conda:
-		"../envs/spectre.yaml"
-	shell:
-		"""
-		spectre CNVCaller \
-		  --coverage {input.cov} \
-		  --snfj {input.snfj} \
-		  --sample-id {params.name} \
-		  --output-dir {params.outdir} \
-		  --reference {input.ref} \
-		  --metadata {input.meta} \
-		  --blacklist {input.blacklist} \
-		  --threads {threads} 2>{log}
-		""" 
-
-#rule spectre_CNVCaller_cancerMode:
-#	input:
-#		cov="qc/{sample}/{sample}.{aligner}.{genome}.regions.bed.gz",
-#		ref="resources/GRCh38_full_analysis_set_plus_decoy_hla",
-#		meta="resources/metadata_removeNs.mdr",
-#		blacklist="resources/grch38_blacklist_spectre.bed",
-#		snfj="results/{sample}/{sample}.{aligner}.{genome}.sniffles2.snfj.gz"
-#	output:
-#		"results/{sample}/{sample}.{aligner}.{genome}_spectre_cancer.vcf.gz.tbi"
-#	params:
-#		outdir="results/{sample}",
-#		name="{sample}.{aligner}.{genome}_spectre_cancer"
-#	threads: 
-#		config["threads"]
-#	log:
-#		"logs/{sample}/{sample}.{aligner}.{genome}.spectre_CNVCaller_cancerMode.log"
-#	benchmark:
-#		"benchmarks/{sample}/{sample}.{aligner}.{genome}.spectre_CNVCaller_cancerMode.tsv"
-#	conda:
-#		"../envs/spectre.yaml"
-#	shell:
-#		"""
-#		spectre CNVCaller \
-#		  --coverage {input.cov} \
-#		  --snfj {input.snfj} \
-#		  --sample-id {params.name} \
-#		  --output-dir {params.outdir} \
-#		  --reference {input.ref} \
-#		  --metadata {input.meta} \
-#		  --blacklist {input.blacklist} \
-#		  --threads {threads}
-#		  --cancer 2>{log}
-#		""" 
-
 
 
 rule create_final_report_cnv:
