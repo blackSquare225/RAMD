@@ -28,12 +28,40 @@ rule severus_to:
 			2> {log}
 		"""
 
+rule severus_filter_vcf:
+    input:
+        vcf="results/{{sample}}/wgs/{{sample}}/severus_out/somatic_SVs/severus_somatic.vcf",
+        excl="resources/GRCh38_full_analysis_set_plus_decoy_hla.exclude.txt"
+    output:
+        "results/{sample}/wgs/{sample}.severus.nd.vcf"
+    conda: 
+    	f"../envs/bcftools.yaml"
+    log: 
+    	"logs/{sample}/{sample}.severus_filter_vcf.log"
+    shell:
+        """
+        zgrep -v -F -f {input.excl} {input.vcf} 2> {log} | bcftools view -f PASS -i 'ID!~"_2$"' -Ov -o {output} - 2>> {log}
+        """
+
+rule severus_bnd_intra_to_inv:
+    input:
+        "workflow/scripts/bnd_intra_to_inv.awk"
+        "results/{sample}/wgs/{sample}.severus.nd.vcf",
+    output:
+        "results/{sample}/wgs/{sample}.severus.nd.bnd2inv.vcf"
+    conda: 
+    	"../envs/bcftools.yaml"
+    log: 
+    	"logs/{sample}/severus_bnd_intra_to_inv.log"
+    shell:
+        """
+        awk -f {input} 2> {log} | bcftools sort -Ov -o {output} - 2>> {log}
+        """
+
 rule severus_parse_svtype:
 	input:
-		vcf="results/{sample}/wgs/{sample}/severus_out/somatic_SVs/severus_somatic.vcf",
-		excl="resources/GRCh38_full_analysis_set_plus_decoy_hla.exclude.txt",
+        "results/{sample}/wgs/{sample}.severus.nd.bnd2inv.vcf"
 	output:
-		vcf_nd="results/{sample}/wgs/{sample}.severus.nd.vcf",
 		vcf_bnd="results/{sample}/wgs/{sample}/{sample}.severus.BND.vcf",
 		vcf_inv="results/{sample}/wgs/{sample}/{sample}.severus.INV.vcf",
 		vcf_dup="results/{sample}/wgs/{sample}/{sample}.severus.DUP.vcf"
@@ -193,6 +221,13 @@ rule severus_flag_dup_known:
 	shell:
 		"Rscript {input} {output} 2>{log}"
 
+
+
+
+
+
+
+# Create final report 
 rule severus_create_final_report_sv:
 	input:
 		"workflow/scripts/create_final_report_sv.R",
@@ -207,19 +242,3 @@ rule severus_create_final_report_sv:
 		"logs/{sample}/severus_create_final_report_sv.log"
 	shell:
 		"Rscript {input} {output} 2> {log}"
-
-
-rule create_final_report_sv:
-	input:
-		Rscript="workflow/scripts/create_final_report_sv.R",
-		vcf_inv="results/{sample}/wgs/{sample}.sniffles2.INV.filtPopVars.merged.annot.tsv",
-		vcf_bnd="results/{sample}/wgs/{sample}.sniffles2.BND.filtPopVars.merged.annot.tsv",
-		chr3_rearr="results/{sample}/wgs/{sample}.chr3rearrangments.annot.tsv"
-	output:
-		"results/{sample}/wgs/{sample}.report.sv.xlsx"
-	threads:
-		1
-	log:
-		"logs/{sample}/{sample}.create_final_report_sv.log"
-	shell:
-		"Rscript {input.Rscript} {input.vcf_inv} {input.vcf_bnd} {input.chr3_rearr} {output} 2> {log}"
